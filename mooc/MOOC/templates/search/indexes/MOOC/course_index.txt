@@ -1,0 +1,9 @@
+{{ object.name }}
+{{ object.university }}
+{{ object.instructor }}
+{{ object.startDate }}
+{{ object.deptCode }}
+{{ object.deptName }}
+{{ object.department.deptCode}}
+{{ object.department.deptName }}
+{{ object.duration }}

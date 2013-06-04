@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+  <head>
+	<title>
+		Take Notes
+	</title>
+	{% load staticfiles %}
+	<script src="{% static "./js/jquery.min.js" %}" type="text/javascript"></script>
+  </head>	
+
+<body>
+<link rel='stylesheet' href="{% static "./css/bootstrap.css" %}" type='text/css' media='all'>		
+<style type="text/css">
+      /* The white background content wrapper */
+      .container > .content {
+        background-color: #fff;
+        padding: 20px;
+        margin: 0 -20px; 
+        -webkit-border-radius: 10px 10px 10px 10px;
+           -moz-border-radius: 10px 10px 10px 10px;
+                border-radius: 10px 10px 10px 10px;
+        -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.15);
+           -moz-box-shadow: 0 1px 2px rgba(0,0,0,.15);
+                box-shadow: 0 1px 2px rgba(0,0,0,.15);
+      }
+
+	  .note-form {
+		margin-left: 180px;
+	  }
+	
+	  .notearea {
+		margin-left: 180px;
+		}
+
+	  legend {
+		margin-right: -50px;
+		font-weight: bold;
+	  	color: #404040;
+	  }
+	
+	  #disp{
+				width:280px;
+				height:390px;
+				border-width:5px;
+				border-style:inset;
+				overflow:auto;
+				//display:none;
+			}
+
+    </style>	
+    <table>
+		<tr>
+			<td>
+				<div id="player"></div>
+			</td>
+			<td>
+				<div id="disp"></div>
+			</td>
+		</tr>
+    </table>		
+    <div class="row notearea">	<div id="xml"></div>
+			<div class="clearfix">
+                		<input id="mynote" type="text"  placeholder="Your note goes here...">
+              		</div>
+     </div>	
+    <!--div id="mynote"></div-->
+    <div id="xml"></div>
+
+    <div id="exam" class="notearea">
+		<h2>Quiz</h2>
+		<p>Enter the value of 5*5 : <input id="result" type="text"/></p>
+		<input id="b1" type="button" value="submit" onclick="test()"/>
+		<div id="disp1"></div>
+		<div id="cont"><input type='button' value='continue' onclick='change()'/></div>
+    </div>
+
+	
+    <script>
+      function test(){
+			if(document.getElementById("result").value=="25"){
+				document.getElementById("disp1").innerHTML="correct";
+				document.getElementById("b1").style.display="none";
+			}
+			else{
+				document.getElementById("disp1").innerHTML="wrong";
+			}
+		}
+
+     function change(){
+			document.getElementById("exam").style.display="none";
+			player.playVideo();
+			//document.getElementById("player").style.display="block";
+		}
+      
+      var tag = document.createElement('script');
+
+      document.getElementById("exam").style.display="none";
+	
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      var player;	
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+          height: '390',
+          width: '500',
+          videoId: '{{videoid}}',
+          events: {
+         	  'onReady': onPlayerReady,
+		   'onStateChange': onPlayerStateChange
+          }
+        });
+      }
+      prev=undefined;
+      arr=new Array();
+      i=0;
+      	
+      function onPlayerReady(event) {
+	 	$.ajax({
+		type : 'GET',
+		dataType : 'xml',
+		url : 'http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20xml%20where%20url%3D%22http%3A%2F%2Fvideo.google.com%2Ftimedtext%3Flang%3Den%26v%3Dar8U_q34FRs%22',
+		success : function(xhtml) {
+		$(xhtml).find('text').each(function(){
+			var str=$(this).attr('start');
+			var val=new Number(str.substr(0,str.indexOf(".")));
+			var use=('0'+(Math.floor(val/60))).slice(-2)+":"+('0'+val%60).slice(-2);
+			$('#disp').append('<p>'+use+' '+$(this).text()+'</p>');
+			arr[i]=str.substr(0,str.indexOf("."));
+			var p = document.getElementsByTagName("p")[i];
+			p.setAttribute('start',arr[i]);
+			p.onclick=function(){
+				console.log("working!!");
+				player.seekTo(p.getAttribute("start"),true);
+				p.style.color="#D80000";
+				p.style.backgroundColor="#C0C0C0";
+				if(prev==undefined){
+					prev=p;
+				}
+				else{
+					prev.style.color="black";
+					prev.style.backgroundColor="white";
+					prev=p;
+				}
+			};
+			i++;
+			});
+		}
+	     });
+        event.target.playVideo();
+	setInterval(fire, 999);
+      }
+      
+      function fire(){
+		var videoDuration=player.getDuration();
+		var currentTime=player.getCurrentTime().toString();
+		var ct=currentTime.substr(0,currentTime.indexOf("."));
+		var k=0;
+		while(k<arr.length){
+					var p=document.getElementsByTagName("p")[k];
+					if(p.getAttribute('start')==ct){
+						var rect=p.getBoundingClientRect();
+						if(rect.bottom+30>=document.getElementsByTagName("div")[1].getBoundingClientRect().bottom){
+							p.scrollIntoView();
+							//console.log(" p bot "+rect.bottom+" w innH "+window.innerHeight+"f h "+document.getElementsByTagName("div")[1].getBoundingClientRect().bottom);
+						}
+						p.style.color="#D80000";
+						p.style.backgroundColor="#C0C0C0";													
+						if(prev==undefined){
+							prev=p;
+						}
+						else{
+							prev.style.color="black";
+							prev.style.backgroundColor="white";
+							prev=p;
+						}
+					}
+					k++;
+				}
+			
+
+		
+
+		var flag=0
+		{% for idx in mynotes %}
+			if(flag==0 && player.getCurrentTime()>={{idx.startTime}} && player.getCurrentTime()<={{idx.endTime}}){
+				//alert('{{idx.content}}')
+				document.getElementById("mynote").value='{{idx.content}}'
+				flag=1
+				}
+				//alert('{{idx.content}}')
+			else if(flag==1)
+					;
+			else
+				document.getElementById("mynote").value='Your note goes here...'
+		{% endfor %}
+	}
+
+      var done = false;
+      function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING && !done) {
+	  var v="{{videoid}}";
+	  if(v=="6snQ4gUHMjE"){
+	  	setTimeout(stopVideo, 5000);	
+          	done = true;
+		}
+	else
+		done=false;
+        }
+      }	
+      
+      function stopVideo() {
+        player.pauseVideo();
+        //document.getElementById("player").style.display="none";
+        document.getElementById("exam").style.display="block";
+      }	
+      /*function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING && !done) {
+          setTimeout(stopVideo, 6000);
+          done = true;
+        }
+      }
+      function stopVideo() {
+        player.stopVideo();
+      }*/
+    </script>
+    
+    <div class="container">
+    <div class="content">	
+    <div class="row">
+	<div class="span2">
+		<button hidden></button>
+	</div>
+	<div class="span2">
+		<button class="btn primary" id="showreset">View/Reset Form</button>
+	</div>
+	<div class="span3">
+		<button class="btn primary" id="hide">Hide Form</button>
+	</div>
+	<div class="span5">
+		<button hidden></button>
+	</div>
+    </div>
+    </div>
+    </div>
+
+    <div class="container">
+    			<div class="content">
+      				<div class="row">
+        				<div class="note-form">
+          						<form id="note_form" action="" method="get">
+            							<fieldset>
+									<h2>Take Notes!</h2>
+									<div class="clearfix" hidden>
+                								<input type="text" name="video" value="{{videoid}}">
+									</div>	
+              								<div class="clearfix">
+                								<input id="start" type="text" name="start"  placeholder="Start Time">
+              								</div>
+              								<div class="clearfix">
+                								<input type="text" name="end"  placeholder="End Time">
+              								</div>
+									<div class="clearfix">
+                								<input type="text" name="note"  placeholder="Content">
+              								</div>
+              								<button class="btn primary" type="submit">Save Note</button>
+           							 </fieldset>
+          						</form>
+        					</div>
+      					</div>
+    				</div>
+  			</div>	
+ </div>		
+	
+<script>
+	$("#showreset").click(function(){
+		var stime=player.getCurrentTime();
+		$("#note_form").show();
+		$("#start").val(Math.floor(stime));
+		});
+	$("#hide").click(function(){
+			$("#note_form").hide();
+			});
+</script>
+
+<script>
+	$( "#note_form" ).on( "submit", function() {
+		alert("hello world");
+    		$.ajax( {
+      			type: "get",
+     			url: "mooc/loadVid.html",
+      			data: $( "#note_form" ).serialize(),
+      			success: function( response ) {
+			alert("hello world2");
+        		//console.log( response );
+      			}
+  		} );
+	});
+</script> 		
+	
+    <!--div>		
+    <div id="myformlabel" bgcolor="red"><p>Click me to show note entry form or reset start time </p></div>
+    <div id="myform"></div>
+    <div id="hide">Click to hide the form</div>		
+   
+	<script>
+	//var stime=player.getCurrentTime()
+	//alert(stime)	
+    		$("#myformlabel").click(function(){
+			var stime=player.getCurrentTime(); 
+			//alert($(this).html());
+			$("#myform").html(		
+    			'<form name="note_form" action="" method="get">'
+				+'<p hidden>Video ID: <input type="text" name="video" value="{{videoid}}"/></p>'
+				+'<p>Start Time: <input type="text" name="start" value="'+Math.floor(stime)+'" /> End  Time: <input type="text" name="end" /> </p>'
+				+'<p>Content: <input type="text" name="note" /></p>'
+				+'<input type="submit" value="submit">'
+    			+'</form>');
+			});
+		$("#hide").click(function(){
+					$("#myform").html('');
+					}
+				);
+	</script>
+	</div-->
+	
+  </body>
+</html>
